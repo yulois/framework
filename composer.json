@@ -1,6 +1,5 @@
 {
     "name": "yulois/framework",
-    "version": "1.0.0",
     "type": "library",
     "description": "The Yulois PHP framework",
     "keywords": ["framework","yulois","venezuela"],
@@ -26,6 +25,9 @@
         "ext-curl"                  	:"*",
 		"mobiledetect/mobiledetectlib"	:"*"
     },
-    "minimum-stability": "stable",
-	"prefer-stable": true
+	"extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
+    },
 }
