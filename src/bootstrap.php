@@ -20,12 +20,12 @@ use Symfony\Component\Routing\Generator\UrlGenerator;
 
 use \Yulois\Session\TemporaryAttributeBag;
 
-define('VND_ROOT', realpath(dirname(__FILE__) . '/../') . '/');
+define('VND_ROOT', realpath(dirname(__FILE__) . '/../') . '/src/');
 
 // Se utiliza el autoloader que viene con Composer
-$loader = require_once VND_ROOT.'autoload.php';
+$loader = require_once YS_VND.'autoload.php';
 
-$loader->set( 'Yulois\\', array( YS_VND.'yulois/libs/' ) );
+$loader->set( 'Yulois\\', array( YS_VND.'yulois/framework/src/' ) );
 $loader->set( 'Main\\', array( YS_APP ) );
 
 if( !defined('YS_ENVIRONMENT') )
