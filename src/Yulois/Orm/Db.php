@@ -1,13 +1,12 @@
 <?php
-/*
- * This file is part of the System Bundles Dinnovos.
+/**
+ * This file is part of the Yulois Framework.
  *
- * (c) Jorge Gaitan <webmaster@dinnovos.com>
+ * (c) Jorge Gaitan <info.yulois@gmail.com>
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
-
 
 namespace Yulois\Orm;
 
