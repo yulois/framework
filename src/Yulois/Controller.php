@@ -101,6 +101,18 @@ class Controller
         return new Response( $content, $status, $headers );
     }
 
+    public function getParameters($key)
+    {
+        $attributes = $this->Request->attributes->all();
+
+        if( array_key_exists($key, $attributes) )
+        {
+            return (string)$attributes[$key];
+        }
+
+        return null;
+    }
+
     /*
      * @return User
      */
