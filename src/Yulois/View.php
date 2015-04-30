@@ -25,13 +25,37 @@ Class View
 	public function __construct()
 	{
 		$this->User = \AppKernel::get('user');
+        $theme_web = \AppKernel::get('config')->get('project', 'theme_web');
+        $theme_admin = \AppKernel::get('config')->get('project', 'theme_admin');
+        $enabled_path_themes = \AppKernel::get('config')->get('project', 'enabled_path_themes');
 
 		$path_templates = array(
 			YS_APP.'layouts',
-			YS_APP.'templates/form',
-			YS_APP.'templates/global',
-			YS_APP.'templates/emails',
+			YS_APP.'templates'
 		);
+
+        if($enabled_path_themes)
+        {
+            if(is_dir(YS_THEMES.$theme_web.'/layouts'))
+            {
+                $path_templates[] = YS_THEMES.$theme_web.'/layouts';
+            }
+
+            if(is_dir(YS_THEMES.$theme_web.'/templates'))
+            {
+                $path_templates[] = YS_THEMES.$theme_web.'/templates';
+            }
+
+            if(is_dir(YS_THEMES.$theme_admin.'/layouts'))
+            {
+                $path_templates[] = YS_THEMES.$theme_admin.'/layouts';
+            }
+
+            if(is_dir(YS_THEMES.$theme_admin.'/templates'))
+            {
+                $path_templates[] = YS_THEMES.$theme_admin.'/templates';
+            }
+        }
 
 		$Twig_Loader_Filesystem = new \Twig_Loader_Filesystem( $path_templates );
 
@@ -151,9 +175,31 @@ Class View
 		{
 			$parts = explode(':', $template );
 
-			if( is_array( $parts ) && count( $parts ) == 3 )
+            if( is_array( $parts ) && count( $parts ) == 3 )
 			{
-				$this->Twig_Loader_Filesystem->addPath( YS_BUNDLES.$parts[0].'/views/'.strtolower($parts[1]) );
+                $tpl = \Yulois\Tools\Inflector::underscore($parts[1]);
+
+                $path = YS_BUNDLES.$parts[0].'/views/'.strtolower($tpl);
+
+                $enabled_path_themes = \AppKernel::get('config')->get('project', 'enabled_path_themes');
+
+                // Si empieza con @ y el key config "path_default_view" == false, busca el theme con el key config "theme_web"
+                if(preg_match('/^(@web|@admin)(.)+/', $parts[0]) && $enabled_path_themes)
+                {
+                    if(preg_match('/^(@web)(.)+/', $parts[0]))
+                    {
+                        $theme = \AppKernel::get('config')->get('project', 'theme_web');
+                    }
+                    else
+                    {
+                        $theme = \AppKernel::get('config')->get('project', 'theme_admin');
+                    }
+
+                    $parts[0] = ltrim(str_replace(array('@admin', '@web'), '', $parts[0]), '/');
+                    $path = YS_THEMES.$theme.'/'.$parts[0].'/views/'.strtolower($tpl);
+                }
+
+				$this->Twig_Loader_Filesystem->addPath($path);
 				$this->Twig->setLoader( $this->Twig_Loader_Filesystem );
 
 				$template = $parts[2];

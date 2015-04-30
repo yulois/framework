@@ -18,7 +18,7 @@ namespace Yulois\Form;
 
 abstract Class Field
 {
-	protected $template = 'default_row';
+	protected $template = 'form/default_row';
 	protected $class_css = 'form-control';
 	protected $max_length = null;
 	protected $min_length = null;
