@@ -73,9 +73,20 @@ Class Action
 
 		if( isset( $attributes['_route'] ) && $attributes['_route'] == 'default' )
 		{
-			$parts[0] = str_replace(' ', '\\', ucwords(str_replace('-', ' ', $attributes['bundle'])));
-			$parts[1] = $attributes['module'];
-			$parts[2] = $attributes['action'];
+            if(array_key_exists('_bundle', $attributes) && is_array($attributes['_bundle']) && count($attributes['_bundle']))
+            {
+                if(array_key_exists($attributes['bundle'], $attributes['_bundle']))
+                {
+                    $parts[0] = $attributes['_bundle'][$attributes['bundle']];
+                }
+            }
+            else
+            {
+                $parts[0] = str_replace(' ', '\\', ucwords(str_replace('-', ' ', $attributes['bundle'])));
+            }
+
+			$parts[1] = str_replace(' ', '', ucwords(str_replace('-', ' ',$attributes['controller'])));
+			$parts[2] = str_replace(' ', '', ucwords(str_replace('-', ' ',$attributes['action'])));;
 		}
 		else
 		{
