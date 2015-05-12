@@ -18,13 +18,14 @@ class Config
 	{
 		$this->config['project'] = require YS_APP . 'config/project.cf.php';
 		$this->config['db'] = require YS_APP . 'config/db.cf.php';
+		$this->config['services'] = require YS_APP . 'config/services.cf.php';
 	}
 
 	public function get( $file, $key = null, $default = -1)
 	{
-		if ( isset( $this->config[$file] ) )
+		if ( array_key_exists( $file, $this->config ) )
 		{
-			if($key && isset( $this->config[$file][$key] ))
+			if($key && array_key_exists( $key, $this->config[$file] ))
 			{
 				return $this->config[$file][$key];
 			}

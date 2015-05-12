@@ -19,9 +19,9 @@ Class Inflector
 		return substr(str_replace(' ', '', $string), 1);
 	}
 
-	public static function underscore( $word )
+	public static function underscore( $word, $sep = '_' )
 	{
-		return  strtolower(preg_replace('/[^A-Z^a-z^0-9]+/','_',
+		return  strtolower(preg_replace('/[^A-Z^a-z^0-9]+/',$sep,
 			preg_replace('/([a-z\d])([A-Z])/','\1_\2',
 				preg_replace('/([A-Z]+)([A-Z][a-z])/','\1_\2',$word))));
 	}

@@ -31,6 +31,8 @@ Class Kernel
 		// Carga la configuracion global
 		self::get('config')->loadConfigGlobal();
 
+        self::$definitions = array_merge(self::$definitions, self::get('config')->get('services', 'definitions', array()));
+
 		if ( YS_ENVIRONMENT == 'shell' )
 		{
 			$Shell = self::get('shell');
