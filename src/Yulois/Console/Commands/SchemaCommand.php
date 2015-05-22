@@ -119,7 +119,7 @@ Class SchemaCommand extends Command
 
 		$path_schema = YS_BUNDLES . $bundle . '/storage/schemas/';
 
-		if( is_file( $path_schema.'current/schema.php' ) )
+		if( is_file( $path_schema.'new/schema.php' ) )
 		{
 			if ( !$dialog->askConfirmation( $output, ' <question>Ya existe un esquema en el bundle, desea reemplazarlo [n]?</question> ', false) )
 			{
@@ -130,27 +130,27 @@ Class SchemaCommand extends Command
 		}
 
 		// Crea el directorio storage/schema/current
-		$this->mkdir( $path_schema.'current' );
+		$this->mkdir( $path_schema.'new' );
 
 		// vuelca el arreglo PHP a YAML
 		$dumper = new Dumper();
 		$content_yaml = $dumper->dump( $schema );
 
 		// Crea el archivo yml dentro de storage/schema/current.
-		$fs->dumpFile( $path_schema.'current/schema.yml', $content_yaml);
+		$fs->dumpFile( $path_schema.'new/schema.yml', $content_yaml);
 		$output->writeln( PHP_EOL." <info>- Se genero el archivo schema.yml correctamente.</info>" );
 
 		// Crea el archivo yml dentro de storage/schema/current.
 		$content_readme = 'Creado: '.$dateTime->format('Y-m-d H:i:s');
-		$fs->dumpFile( $path_schema.'current/readme.md', $content_readme);
+		$fs->dumpFile( $path_schema.'new/readme.md', $content_readme);
 		$output->writeln( " <info>- Se genero el archivo readme.md correctamente.</info>" );
 
 		$GenerateClass->setTemplate( 'Doctrine' );
-		$GenerateClass->create( $path_schema.'current/schema', $schema );
+		$GenerateClass->create( $path_schema.'new/schema', $schema );
 		$output->writeln( " <info>- Se genero el archivo schema.php correctamente.</info>" );
 
 		// Se Obtiene el objeto del esquema creado.
-		$schema = include $path_schema.'current/schema.php';
+		$schema = include $path_schema.'new/schema.php';
 
 		// Se crea el archivo .sql que contendra la estructura del esquema para la base de datos.
 		$querys = $schema->toSql( \AppKernel::db()->getDriverManager()->getDatabasePlatform() );
@@ -161,7 +161,7 @@ Class SchemaCommand extends Command
 			$sql .= "$query;\n";
 		}
 
-		$fs->dumpFile( $path_schema.'current/database.sql',$sql);
+		$fs->dumpFile( $path_schema.'new/database.sql',$sql);
 		$output->writeln( " <info>- Se genero el archivo database.sql correctamente.</info>" );
 
 		$output->writeln( PHP_EOL." <info>EL esquema del Bundle $bundle fue creado correctamente.</info>" );

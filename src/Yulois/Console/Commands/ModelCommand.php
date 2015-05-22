@@ -67,7 +67,7 @@ Class ModelCommand extends Command
 		{
 			while( !preg_match('/^([1-9][0-9\.]+[0-9])+$/', $version) )
 			{
-				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingrear por ejemplo: 1.0</error>' );
+				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingresar por ejemplo: 1.0</error>' );
 
 				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
 

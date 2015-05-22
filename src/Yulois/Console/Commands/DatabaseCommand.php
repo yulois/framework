@@ -49,11 +49,11 @@ Class DatabaseCommand extends Command
 
 		$path_schema = YS_BUNDLES . $bundle . '/storage/schemas/';
 
-		$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+		$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [new]: ', null );
 
 		if( $version === null )
 		{
-			$version = 'current';
+			$version = 'new';
 		}
 		else
 		{
@@ -61,11 +61,11 @@ Class DatabaseCommand extends Command
 			{
 				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingrear por ejemplo: 1.0</error>' );
 
-				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [new]: ', null );
 
 				if( $version === null )
 				{
-					$version = 'current';
+					$version = 'new';
 					break;
 				}
 			}
@@ -77,23 +77,10 @@ Class DatabaseCommand extends Command
 			exit;
 		}
 
-		// Obtiene el contenido del archivo schema
-		$_schema = Yaml::parse( $path_schema . $version . '/schema.yml' ) ;
-
-		$ValidateSchema = \AppKernel::get( 'validate_schema' );
-
-		/* Valida los archivos *.yml y muestra los posibles errores */
-		if ( !$ValidateSchema->isValid( $_schema ) )
-		{
-			$this->showErrors( $ValidateSchema );
-
-			exit;
-		}
-
-		$this->createDatabase( $input, $output, $path_schema . $version );
+		$this->createDatabase( $input, $output, $path_schema, $path_schema . $version );
 	}
 
-	private function createDatabase( $input, $output, $path_schema )
+	private function createDatabase( $input, $output, $path_schema_base, $path_schema )
 	{
 		$fs = new Filesystem();
 		$dateTime = new \DateTime();
@@ -107,20 +94,33 @@ Class DatabaseCommand extends Command
 			return;
 		}
 
+        if(is_file($path_schema_base.'current/schema.php'))
+        {
+            $schema_current = include $path_schema_base.'current/schema.php';
+        }
+        else
+        {
+            $schema_current = new \Doctrine\DBAL\Schema\Schema();
+        }
+
 		// Se Obtiene el objeto del esquema creado.
 		$schema = include $path_schema.'/schema.php';
 
+        $comparator = new \Doctrine\DBAL\Schema\Comparator();
+        $schemaDiff = $comparator->compareSchemas( $schema_current, $schema);
+
 		$DriverManager = \AppKernel::db()->getDriverManager();
 
+        /*
 		$sm = $DriverManager->getSchemaManager();
-
 		$schema_current = $sm->createSchema();
+        */
 
-		$comparator = new \Doctrine\DBAL\Schema\Comparator();
-		$schemaDiff = $comparator->compareSchemas( $schema_current, $schema);
-		$queries = $schemaDiff->toSql( $DriverManager->getDatabasePlatform() );
+		//$queries = $schemaDiff->toSaveSql( $DriverManager->getDatabasePlatform() );
 
-		if( count($queries) == 0 )
+        $queries = $schemaDiff->toSql($DriverManager->getDatabasePlatform());
+
+		if(count($queries) == 0)
 		{
 			$output->writeln( PHP_EOL." <info>No hay nada para actualizar.</info>" );
 			return;
@@ -130,18 +130,41 @@ Class DatabaseCommand extends Command
 		$DriverManager->query( $_q );
 		$output->writeln( PHP_EOL." $_q".PHP_EOL );
 
-		foreach( $queries as $query )
+		foreach($queries as $query)
 		{
-			$DriverManager->query( $query );
-			$output->writeln( " - $query" );
+			$DriverManager->query($query);
+			$output->writeln(" - $query");
 		}
 
 		$_q = "set foreign_key_checks = 1;";
-		$output->writeln( PHP_EOL." $_q".PHP_EOL );
-		$DriverManager->query( $_q );
+		$output->writeln(PHP_EOL." $_q".PHP_EOL);
+		$DriverManager->query($_q);
 
-		$output->writeln( " <info>La base de datos fue actualizada correctamente.</info>" );
+        // Compia todos los archivos a current
+        $this->mkdir($path_schema_base.'current');
+        $fs->copy($path_schema_base.'new/database.sql', $path_schema_base.'current/database.sql', true);
+        $fs->copy($path_schema_base.'new/readme.md', $path_schema_base.'current/readme.md', true);
+        $fs->copy($path_schema_base.'new/schema.php', $path_schema_base.'current/schema.php', true);
+        $fs->copy($path_schema_base.'new/schema.yml', $path_schema_base.'current/schema.yml', true);
+
+		$output->writeln("<info>La base de datos fue actualizada correctamente.</info>");
 	}
+
+    private function  mkdir( $path )
+    {
+        $fs = new Filesystem();
+
+        try
+        {
+            $fs->mkdir( $path );
+
+            return  true;
+        }
+        catch (IOException $e)
+        {
+            echo "Ha ocurrido un error mientras se generaba el directorio: $path";
+        }
+    }
 
 	private function showErrors( $GeneratorSchema )
 	{
