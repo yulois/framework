@@ -80,18 +80,20 @@ Class Form extends InterfaceForm
 		$array_post = array();
 		$array_files = array();
 
-		if ( isset($post[$name_form]) )
+        if(array_key_exists($name_form, $post))
 		{
 			$array_post = $post[$name_form];
 			$this->has_data = true;
 		}
 
-		if (isset($files[$name_form]))
+        if(array_key_exists($name_form, $files))
 		{
 			$array_files = $files[$name_form];
 		}
 
 		$this->data = array_merge($array_post, $array_files);
+
+        return $this->has_data;
 	}
 
 	public function bindRequest( Request $request )
@@ -103,18 +105,20 @@ Class Form extends InterfaceForm
 		$post = $request->request->all();
 		$files = $request->files->all();
 
-		if ( isset($post[$name_form]) )
+		if(array_key_exists($name_form, $post))
 		{
 			$array_post = $post[$name_form];
 			$this->has_data = true;
 		}
 
-		if (isset($files[$name_form]))
+		if(array_key_exists($name_form, $files))
 		{
 			$array_files = $files[$name_form];
 		}
 
 		$this->data = array_merge($array_post, $array_files);
+
+        return $this->has_data;
 	}
 
 	public function isValid()
