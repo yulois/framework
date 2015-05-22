@@ -62,9 +62,9 @@ class Controller
      */
     protected $MobileDetect;
 
-    public function __construct( Request $request )
+    public function __construct( $request = null )
     {
-        $this->Request = $request;
+        $this->Request = ($request && ($request instanceof Request)) ? $request : \AppKernel::get('request');
 
         $this->User = \AppKernel::get('user');
 
@@ -244,12 +244,18 @@ class Controller
         return (count( $post )) ? true : false;
     }
 
-    public function clearVar( $value )
+    public function clearVar($value)
     {
-        return htmlentities( strip_tags( $value ), ENT_QUOTES, 'UTF-8' );
+        return htmlentities(strip_tags($value), ENT_QUOTES, 'UTF-8');
     }
 
-    public function getBaseUrl( $is_secure = false )
+    public function clearTextarea( $value )
+    {
+        // Inserta saltos de línea HTML antes de todas las nuevas líneas de un string
+        return nl2br($this->clearVar($value));
+    }
+
+    public function getBaseUrl($is_secure = false)
     {
         if( $is_secure )
         {
@@ -257,6 +263,17 @@ class Controller
         }
 
         return "http://{$_SERVER['HTTP_HOST']}";
+    }
 
+    public function slug($string)
+    {
+        $string = \Yulois\Tools\String::replaceVowels($string);
+
+        $string = preg_replace('/[^a-zA-Z0-9\_\-\.]+/', '-', strtolower($string));
+        $string = trim($string, '-');
+        $string = trim($string, '_');
+        $string = trim($string, '.');
+
+        return $string;
     }
 }
