@@ -80,7 +80,7 @@ foreach( $bundles as $bundle )
 	// Registra el namespace del Bundle.
 	$loader->set( $bundle, array( YS_BUNDLES ) );
 
-	$file_routes = str_replace('\\', '/', YS_BUNDLES.$bundle.'config/routes.cf.php' );;
+	$file_routes = str_replace('\\', '/', YS_BUNDLES.$bundle.'config/routes.cf.php' );
 
 	if( is_file( $file_routes ) )
 	{
