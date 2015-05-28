@@ -244,9 +244,9 @@ class Controller
         return (count( $post )) ? true : false;
     }
 
-    public function clearVar($value)
+    public function clearVar($value, $encoding='UTF-8')
     {
-        return htmlentities(strip_tags($value), ENT_QUOTES, 'UTF-8');
+        return htmlentities(strip_tags($value), ENT_QUOTES, $encoding);
     }
 
     public function clearTextarea( $value )
