@@ -145,4 +145,49 @@ Class Util
 
 		return false;
 	}
+
+    static function bundle($namespace, $action)
+    {
+        $bundles = \AppKernel::registryBundles();
+        $namespace_slug = \Yulois\Tools\String::slug($namespace);
+        $bundles_activated = array();
+        $action = strtolower($action);
+
+        if(!in_array($action, array('new', 'delete', 'deactivate')))
+        {
+            throw new Exception( "El par&aacute;metro para el m&eacute;todo debe ser 'new' o 'delete'" );
+        }
+
+        foreach($bundles as $bundle)
+        {
+            $bundle_slug = \Yulois\Tools\String::slug($bundle);
+            $bundles_activated[$bundle_slug] = trim($bundle,'\\');
+        }
+
+        if($action == 'new')
+        {
+            if(!array_key_exists($namespace_slug, $bundles_activated))
+            {
+                $bundles_activated[$namespace_slug] = trim($namespace,'\\');
+            }
+        }
+        else if($action == 'delete' || $action == 'deactivate')
+        {
+            unset($bundles_activated[$namespace_slug]);
+        }
+
+        // Crea la clase AppKernel
+        $GenerateClass = \AppKernel::get('generate_class');
+        $GenerateClass->setTemplate('AppKernel');
+        $GenerateClass->setNameClass('AppKernel');
+        $GenerateClass->setNameClassExtend('Kernel');
+        $GenerateClass->create(YS_APP. 'AppKernel', array('bundles'=>$bundles_activated));
+
+        // Elimina el directorio del bundle
+        if($action == 'delete' && is_dir(YS_BUNDLES.str_replace('\\', '/', $namespace)))
+        {
+            $fs = new \Symfony\Component\Filesystem\Filesystem();
+            $fs->remove(YS_BUNDLES.str_replace('\\', '/', $namespace));
+        }
+    }
 }
