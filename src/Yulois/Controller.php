@@ -267,13 +267,14 @@ class Controller
 
     public function slug($string)
     {
-        $string = \Yulois\Tools\String::replaceVowels($string);
-
-        $string = preg_replace('/[^a-zA-Z0-9\_\-\.]+/', '-', strtolower($string));
-        $string = trim($string, '-');
-        $string = trim($string, '_');
-        $string = trim($string, '.');
+        $string = \Yulois\Tools\String::slug($string);
 
         return $string;
+    }
+
+    public function getTimestamp($string = 'Y-m-d H:i:s')
+    {
+        $DateTime = new \DateTime('NOW');
+        return $DateTime->format( $string );
     }
 }

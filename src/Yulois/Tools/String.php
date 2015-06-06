@@ -14,7 +14,14 @@ Class String
 {
 	public static function slug( $string )
 	{
-		return trim(preg_replace('/[^a-zA-Z0-9\_-]+/', '-', strtolower($string)), '-');
+        $string = self::replaceVowels($string);
+
+        $string = preg_replace('/[^a-zA-Z0-9\_\-\.]+/', '-', strtolower($string));
+        $string = trim($string, '-');
+        $string = trim($string, '_');
+        $string = trim($string, '.');
+
+		return $string;
 	}
 
 	public static function resume( $str, $limit = 100, $end_char = '...')
