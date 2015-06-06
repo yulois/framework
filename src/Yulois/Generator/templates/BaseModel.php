@@ -28,7 +28,7 @@ foreach ( $data['fields'] as $field => $_options )
 */
 Class ##CLASS##
 {
-	const table = '<?php echo strtolower($data['options']['table']) ?>';
+	const table = '<?php echo $options['_prefix']?><?php echo strtolower($data['options']['table']) ?>';
 <?php if( isset($field_title) ): ?>
 	const title = '<?php echo $field_title; ?>';
 <?php endif; ?>

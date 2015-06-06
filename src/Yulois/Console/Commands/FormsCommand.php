@@ -22,8 +22,10 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Console\Question\Question;
 
-use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Parser;
+use Symfony\Component\Finder\Finder;
 
 Class FormsCommand extends Command
 {
@@ -36,38 +38,43 @@ Class FormsCommand extends Command
 				'namespace',
 				InputArgument::REQUIRED,
 				'namespace of bundle'
-			);
+			)->addArgument(
+                'version',
+                InputArgument::OPTIONAL,
+                'Version a utilizar'
+            );
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		$dialog = $this->getHelperSet()->get('dialog');
+        $helper = $this->getHelper('question');
 		$bundle = $input->getArgument('namespace');
+        $version = $input->getArgument('version');
+        $yaml = new Parser();
 
 		$bundle = trim($bundle, '/');
 		$bundle = trim($bundle, '\\');
 
-		$path_schema = YS_BUNDLES . $bundle . '/storage/schemas/';
+        $path_schema = YS_APP . 'storage/schemas/';
 
-		$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
-
-		if( $version === null )
-		{
-			$version = 'current';
-		}
-		else
-		{
+        if($version === null)
+        {
+            $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', 'current');
+            $version = $helper->ask( $input, $output, $question );
+        }
+        if($version != 'current')
+        {
 			while( !preg_match('/^([1-9][0-9\.]+[0-9])+$/', $version) )
 			{
 				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingrear por ejemplo: 1.0</error>' );
 
-				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+                $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', 'current');
+                $version = $helper->ask( $input, $output, $question );
 
-				if( $version === null )
-				{
-					$version = 'current';
-					break;
-				}
+                if( $version == 'current' )
+                {
+                    break;
+                }
 			}
 		}
 
@@ -77,20 +84,20 @@ Class FormsCommand extends Command
 			exit;
 		}
 
-		// Obtiene el contenido del archivo schema
-		$_schema = Yaml::parse( $path_schema . $version . '/schema.yml' ) ;
+        // Obtiene el contenido del archivo *.yml
+        $schema = array();
 
-		$ValidateSchema = \AppKernel::get( 'validate_schema' );
+        $finder = new Finder();
+        $finder->files()->name('*.yml')->in(str_replace('\\', '/',$path_schema . $version . '/bundles/'.$bundle));
 
-		/* Valida los archivos *.yml y muestra los posibles errores */
-		if ( !$ValidateSchema->isValid( $_schema ) )
-		{
-			$this->showErrors( $ValidateSchema );
+        // Une todos los esquemas en un solo array
+        foreach( $finder as $file )
+        {
+            // Concatena el esquema de cada archivo conseguido
+            $schema = array_merge($schema, $yaml->parse(file_get_contents($file)));
+        }
 
-			exit;
-		}
-
-		$this->createForms( $input, $output, $bundle, $_schema );
+		$this->createForms( $input, $output, $bundle, $schema );
 	}
 
 	private function createForms( $input, $output, $bundle, $schema )

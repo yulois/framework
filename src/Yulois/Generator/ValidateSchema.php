@@ -16,7 +16,7 @@
 
 namespace Yulois\Generator;
 
-use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Parser;
 
 Class ValidateSchema
 {
@@ -285,12 +285,13 @@ Class ValidateSchema
 
 	private function validateDefinition($table, $field, $options)
 	{
+        $yaml = new Parser();
 		$schema = $this->schema;
 
 		$type = $options['type'];
 		$_tmp_option = $options;
 		$definition = array();
-		$definition_fields = Yaml::parse(YS_APP . 'config/schema/fields.yml');
+		$definition_fields = $yaml->parse( file_get_contents(YS_APP . 'config/schema/fields.yml') );
 
 		/* Valida el tipo de campo */
 		if (!isset($definition_fields[$type]))

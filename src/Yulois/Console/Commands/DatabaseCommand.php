@@ -21,6 +21,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Filesystem\Filesystem;
 
 use Symfony\Component\Yaml\Yaml;
@@ -31,32 +32,38 @@ Class DatabaseCommand extends Command
 	{
 		$this
 			->setName('app:database')
-			->setDescription('Crea las tablas en la base de datos desde la version del esquema especificado.');
+			->setDescription('Crea las tablas en la base de datos desde la version del esquema especificado.')
+            ->addArgument(
+                'version',
+                InputArgument::OPTIONAL,
+                'Version a utilizar'
+            );
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		$dialog = $this->getHelperSet()->get('dialog');
+        $version = $input->getArgument('version');
+        $helper = $this->getHelper('question');
 
         $path_schema = YS_APP . 'storage/schemas/';
 
-		$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+        if($version === null)
+        {
+            $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', 'current');
+            $version = $helper->ask( $input, $output, $question );
+        }
 
-		if( $version === null )
-		{
-			$version = 'current';
-		}
-		else
+		if($version != 'current')
 		{
 			while( !preg_match('/^([1-9][0-9\.]+[0-9])+$/', $version) )
 			{
 				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingrear por ejemplo: 1.0</error>' );
 
-				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+                $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', 'current');
+                $version = $helper->ask( $input, $output, $question );
 
-				if( $version === null )
+				if( $version == 'current' )
 				{
-					$version = 'current';
 					break;
 				}
 			}

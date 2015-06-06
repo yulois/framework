@@ -6,7 +6,7 @@ $manytomany = array();
 ?>
 $schema = new \Doctrine\DBAL\Schema\Schema();
 <?php foreach( $data as $model => $data ) { ?>
-$<?php echo $model ?> = $schema->createTable("<?php echo $data['options']['table'] ?>");
+$<?php echo $model ?> = $schema->createTable("<?php echo $options['_prefix']?><?php echo $data['options']['table'] ?>");
 <?php foreach( $data['fields'] as $field => $config ) {?>
 <?php if( isset($config['unique']) && $config['unique'] ){?>
 <?php $unique[] = $field; ?>

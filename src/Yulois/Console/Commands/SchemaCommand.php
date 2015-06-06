@@ -23,8 +23,11 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Question\Question;
 
-use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Yaml\Parser;
 use Symfony\Component\Yaml\Dumper;
 use Yulois\Tools\Util;
 
@@ -34,18 +37,26 @@ Class SchemaCommand extends Command
 	{
 		$this
 			->setName('app:schema')
-			->setDescription('Crea el esquema desde el Bundle especificado como argumento.')
+			->setDescription('Crea el esquema desde todos los bundles configurados en AppKernel.')
 			->addArgument(
 				'action',
 				InputArgument::OPTIONAL,
 				'create o freeze',
 				'create'
-			);
+			)
+            ->addArgument(
+                'behavior',
+                InputArgument::OPTIONAL,
+                'overwrite'
+            );
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
+        $path_schema = YS_APP . 'storage/schemas/';
 		$action = $input->getArgument('action');
+		$behavior = $input->getArgument('behavior');
+        $yaml = new Parser();
 
 		if( !in_array($action, array('create', 'freeze') ) )
 		{
@@ -56,20 +67,24 @@ Class SchemaCommand extends Command
 
         $bundles = \AppKernel::registryBundles();
         $_schema = array();
+        $mirrors = array();
 
-        foreach( $bundles as $bundle )
+        foreach($bundles as $bundle)
         {
             $dir_schema = str_replace('\\', '/', YS_BUNDLES.$bundle.'config/schema');
 
             if(is_dir($dir_schema))
             {
-                $files = Util::getFilesPath($dir_schema, 'yml');
+                $mirrors[$bundle] = $bundle;
 
-                /* Une todos los esquemas en un solo array */
-                foreach ( $files as $yml )
+                $finder = new Finder();
+                $finder->files()->name('*.yml')->in($dir_schema);
+
+                // Une todos los esquemas en un solo array
+                foreach( $finder as $file )
                 {
                     // Concatena el esquema de cada archivo conseguido
-                    $_schema = array_merge( $_schema, Yaml::parse( $yml ) );
+                    $_schema = array_merge($_schema, $yaml->parse(file_get_contents($file)));
                 }
             }
         }
@@ -91,30 +106,53 @@ Class SchemaCommand extends Command
 		{
 			case 'CREATE':
 
-				$this->createSchema( $input, $output, $schema );
+				$this->createSchema($input, $output, $path_schema, $schema, $behavior);
+
+                $this->mkdir($path_schema.'current/bundles');
+
+                $fs = new Filesystem();
+
+                $_path_schema_bundle = str_replace('\\', '/',$path_schema.'current/bundles/');
+                $_path_schema_tmp =  str_replace('\\', '/',$path_schema.'current/tmp/');
+
+                foreach($mirrors as $namespace => $mirror)
+                {
+                    $path_source = str_replace('\\', '/',YS_BUNDLES.$namespace.'config/schema');
+
+                    // Hace un espejo desde el esquema del bundle al directorio temporal
+                    $fs->mirror($path_source, $_path_schema_tmp.$namespace, null, array('override'=>true,'delete'=>true));
+                }
+
+                // Hace un espejo desde el directorio temporal al current/bundles/
+                $fs->mirror($_path_schema_tmp, $_path_schema_bundle, null, array('override'=>true,'delete'=>true));
+
+                // Elimina el directorio temporal
+                $fs->remove($_path_schema_tmp);
+
 				break;
 
 			case 'FREEZE':
 
-				$this->freezeSchema( $input, $output, $schema, $action );
+				$this->freezeSchema( $input, $output, $path_schema, $schema, $action );
 				break;
 		}
 	}
 
-	private function createSchema( $input, $output, $schema )
+	private function createSchema( $input, $output, $path_schema, $schema, $behavior )
 	{
 		$GenerateClass = \AppKernel::get( 'generate_class' );
-		$dialog = $this->getHelperSet()->get('dialog');
+        $prefix = \AppKernel::get('config')->get('db', 'prefix', '');
+        $helper = $this->getHelper('question');
 		$fs = new Filesystem();
 		$dateTime = new \DateTime();
 
 		$output->write(PHP_EOL . " Creando el esquema..." . PHP_EOL.PHP_EOL);
 
-		$path_schema = YS_APP . 'storage/schemas/';
-
-		if(is_file($path_schema.'current/schema.php'))
+		if($behavior != 'overwrite' && is_file($path_schema.'current/schema.php'))
 		{
-			if ( !$dialog->askConfirmation( $output, ' <question>Ya existe una version esquema, desea reemplazarlo [n]?</question> ', false) )
+            $question = new ConfirmationQuestion(' <question>Ya existe una version del esquema, desea reemplazarlo [n]?</question> ', false);
+
+			if ( !$helper->ask($input, $output, $question) )
 			{
 				$output->writeln( " <error>ATENCION: El esquema no fue creado.</error>" . PHP_EOL );
 
@@ -139,6 +177,7 @@ Class SchemaCommand extends Command
 		$output->writeln(" <info>- Se genero el archivo readme.md correctamente.</info>");
 
 		$GenerateClass->setTemplate( 'Doctrine' );
+        $GenerateClass->setValues(array('_prefix'=>$prefix));
 		$GenerateClass->create( $path_schema.'current/schema', $schema );
 		$output->writeln(" <info>- Se genero el archivo schema.php correctamente.</info>" );
 
@@ -157,33 +196,29 @@ Class SchemaCommand extends Command
 		$fs->dumpFile($path_schema.'current/database.sql',$sql);
 		$output->writeln(" <info>- Se genero el archivo database.sql correctamente.</info>");
 
-		$output->writeln( PHP_EOL." <info>EL esquema fue creado correctamente en: ".YS_SYSTEM."app/storage/schemas/</info>" );
+		$output->writeln( PHP_EOL." <info>EL esquema fue creado correctamente en: ".YS_SYSTEM."app/storage/schemas/current/</info>" );
 	}
 
-	private function freezeSchema( $input, $output, $schema )
+	private function freezeSchema( $input, $output, $path_schema, $schema )
 	{
-		$dialog = $this->getHelperSet()->get('dialog');
-        $path_schema = YS_APP . 'storage/schemas/';
+        $helper = $this->getHelper('question');
 		$first = true;
-		$files_schema = array(
-			$path_schema.'current/database.sql',
-			$path_schema.'current/readme.md',
-			$path_schema.'current/schema.php',
-			$path_schema.'current/schema.yml'
-		);
 
 		$fs = new Filesystem();
 
 		do
 		{
-			if( $first )
+			if($first)
 			{
-				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema: ', null );
+                $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema: ', null);
+                $version = $helper->ask( $input, $output, $question );
 			}
 			else
 			{
 				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingrear por ejemplo: 1.0</error>'. PHP_EOL );
-				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema: ', null );
+
+                $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema: ', null);
+                $version = $helper->ask( $input, $output, $question );
 			}
 
 			$first = false;
@@ -197,23 +232,12 @@ Class SchemaCommand extends Command
 		}
 		while( !preg_match('/^([1-9][0-9\.]+[0-9])+$/', $version) );
 
-		$exists = $fs->exists( $files_schema );
-
-		if( !$exists )
-		{
-			$output->writeln( PHP_EOL .' <error>ATENCION: Faltan algunos archivos dentro del esquema actual.</error>'. PHP_EOL );
-			return;
-		}
-
 		// Crea el directorio para la version del esquema.
-		$this->mkdir( $path_schema.$version );
+		$this->mkdir($path_schema.$version);
 
-		foreach( $files_schema as $file )
-		{
-			$fs->copy( $file, $path_schema.$version.'/'.basename( str_replace('\\', '/', $file) ), true);
-		}
+        $fs->mirror($path_schema.'current', $path_schema.$version, null, array('override'=>true,'delete'=>true));
 
-		$output->write( " <info>Se ha congelado correctamente su esquema esctual a la version $version.</info>" . PHP_EOL );
+		$output->write( " <info>Se ha congelado correctamente su esquema actual a la version $version.</info>" . PHP_EOL );
 	}
 
 	private function  mkdir( $path )

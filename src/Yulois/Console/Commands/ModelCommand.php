@@ -23,8 +23,10 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Console\Question\Question;
 
-use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Yaml\Parser;
+use Symfony\Component\Finder\Finder;
 
 Class ModelCommand extends Command
 {
@@ -38,44 +40,44 @@ Class ModelCommand extends Command
 				InputArgument::REQUIRED,
 				'namespace of bundle'
 			)
-			->addOption(
-				'yell',
-				null,
-				InputOption::VALUE_NONE,
-				'If set, the task will yell in uppercase letters'
-			)
-		;
+            ->addArgument(
+                'version',
+                InputArgument::OPTIONAL,
+                'Version a utilizar'
+            );
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output)
 	{
-		$dialog = $this->getHelperSet()->get('dialog');
+        $helper = $this->getHelper('question');
 		$bundle = $input->getArgument('namespace');
+		$version = $input->getArgument('version');
+        $yaml = new Parser();
 
 		$bundle = trim($bundle, '/');
 		$bundle = trim($bundle, '\\');
 
-		$path_schema = YS_BUNDLES . $bundle . '/storage/schemas/';
+        $path_schema = YS_APP . 'storage/schemas/';
 
-		$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+        if($version === null)
+        {
+            $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', 'current');
+            $version = $helper->ask( $input, $output, $question );
+        }
 
-		if( $version === null )
-		{
-			$version = 'current';
-		}
-		else
-		{
+        if($version != 'current')
+        {
 			while( !preg_match('/^([1-9][0-9\.]+[0-9])+$/', $version) )
 			{
 				$output->writeln( PHP_EOL .' <error>ATENCION: La version no tiene un formato valido, debe ingresar por ejemplo: 1.0</error>' );
 
-				$version = $dialog->ask( $output, PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', null );
+                $question = new Question(PHP_EOL .' Por favor, ingrese la version del esquema que desea utilizar [current]: ', 'current');
+                $version = $helper->ask( $input, $output, $question );
 
-				if( $version === null )
-				{
-					$version = 'current';
-					break;
-				}
+                if( $version == 'current' )
+                {
+                    break;
+                }
 			}
 		}
 
@@ -85,20 +87,18 @@ Class ModelCommand extends Command
 			exit;
 		}
 
-		// Obtiene el contenido del archivo schema
-		$_schema = Yaml::parse( $path_schema . $version . '/schema.yml' ) ;
+		// Obtiene el contenido del archivo *.yml
+		$schema = array();
 
-		$ValidateSchema = \AppKernel::get( 'validate_schema' );
+        $finder = new Finder();
+        $finder->files()->name('*.yml')->in(str_replace('\\', '/',$path_schema . $version . '/bundles/'.$bundle));
 
-		/* Valida los archivos *.yml y muestra los posibles errores */
-		if ( !$ValidateSchema->isValid( $_schema ) )
-		{
-			$this->showErrors( $ValidateSchema );
-
-			exit;
-		}
-		/* Obtiene el array() del esquema */
-		$schema = $ValidateSchema->getSchema();
+        // Une todos los esquemas en un solo array
+        foreach( $finder as $file )
+        {
+            // Concatena el esquema de cada archivo conseguido
+            $schema = array_merge($schema, $yaml->parse(file_get_contents($file)));
+        }
 
 		$this->generateModels( $input, $output, $schema, $bundle );
 	}
@@ -106,6 +106,7 @@ Class ModelCommand extends Command
 	public function generateModels( $input, $output, $schema, $bundle )
 	{
 		$GenerateClass = \AppKernel::get( 'generate_class' );
+        $prefix = \AppKernel::get('config')->get('db', 'prefix', '');
 
 		$output->write( PHP_EOL . "Lista de clases para el modelo:" . PHP_EOL );
 
@@ -117,6 +118,7 @@ Class ModelCommand extends Command
 			{
 				$GenerateClass->setTemplate( 'Model' );
 				$GenerateClass->setNameClass( $table );
+                $GenerateClass->setValues(array('_prefix'=>$prefix));
 				$GenerateClass->setNamespace( ucfirst( str_replace('/', '\\', $bundle) ) . '\Models' );
 				$GenerateClass->setNameClassExtend( 'Base\\'.ucfirst($table).'ModelBase' );
 				$GenerateClass->create( YS_BUNDLES . $bundle . '/Models/' . ucfirst( $table ), $options );
@@ -136,13 +138,13 @@ Class ModelCommand extends Command
 		$output->write( PHP_EOL . PHP_EOL );
 	}
 
-	private function  mkdir( $path )
+	private function mkdir($path)
 	{
 		$fs = new Filesystem();
 
 		try
 		{
-			$fs->mkdir( $path );
+			$fs->mkdir($path);
 
 			return  true;
 		}
