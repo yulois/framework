@@ -25,12 +25,17 @@ class Config
 	{
 		if ( array_key_exists( $file, $this->config ) )
 		{
-			if($key && array_key_exists( $key, $this->config[$file] ))
-			{
-				return $this->config[$file][$key];
-			}
-
-			return $this->config[$file];
+            if($key)
+            {
+                if(array_key_exists( $key, $this->config[$file] ))
+                {
+                    return $this->config[$file][$key];
+                }
+            }
+            else if($key === null)
+            {
+                return $this->config[$file];
+            }
 		}
 
 		if ( $default == -1 )
